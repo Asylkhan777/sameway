@@ -20,16 +20,22 @@ Built solo for Business Cup 2.0 (AIESEC × Nazarbayev University × Zimran), a 2
    fit equally and one check problem that decides between them.
 4. **Practice the fix** → three right answers → **Fixed ✓**. The rule shows up on `/progress` and
    survives a refresh.
-5. Start a second worksheet of your own to see the paywall. Checkout runs in Stripe **test mode**:
-   card `4242 4242 4242 4242`, any future date, any CVC, any ZIP.
+5. Your first three own worksheets are free. Start a fourth to see the paywall and walk the
+   checkout with the test card `4242 4242 4242 4242` (filled in for you).
 6. On `/progress`, open **Demo: 3 weeks with Maya** to see what a returning family sees.
 
 ## Who it is for
 
 A US parent of a 2nd–4th grader who helps with homework on weeknights. They know the right answer
 but not *why* their kid's answer is wrong, and the school's methods aren't how they learned.
-The parent pays: the first own worksheet is free, then SameWay Plus is $9.99/month or
+The parent pays: the first three own worksheets are free, then SameWay Plus is $9.99/month or
 $59/school year (constants in [lib/pricing.ts](lib/pricing.ts)).
+
+## Payment
+
+A Stripe test-mode Checkout is written ([app/api/checkout](app/api/checkout)) and turns on when
+`STRIPE_SECRET_KEY` is set; the live demo has no key, so it uses the built-in test checkout
+instead, clearly labeled as a demo with no real payment.
 
 ## How it works
 
@@ -94,7 +100,7 @@ npm run simulate             # the validation above
 ```
 
 The app runs without any keys: typing and the diagnosis work, samples fall back to their saved
-transcription, and the paywall offers a labeled **Simulate upgrade (demo)** button.
+transcription, and the paywall opens the built-in demo checkout.
 
 ### Environment variables
 
@@ -103,7 +109,7 @@ transcription, and the paywall offers a labeled **Simulate upgrade (demo)** butt
 | `GOOGLE_GENERATIVE_AI_API_KEY` | Google AI Studio key for the photo reader |
 | `VISION_MODEL` | A Gemini Flash model id, e.g. `gemini-3.5-flash` |
 | `VISION_MODEL_FALLBACK` | A different Flash model id, e.g. `gemini-3.5-flash-lite`. Quotas are per model, so it answers when the primary is busy or rate-limited |
-| `STRIPE_SECRET_KEY` | A Stripe **test-mode** secret key (`sk_test_…`) |
+| `STRIPE_SECRET_KEY` | Optional. A Stripe **test-mode** secret key (`sk_test_…`); without it the built-in demo checkout is used |
 | `NEXT_PUBLIC_SITE_URL` | Public URL of the deployment, used for the checkout return links |
 
 Keys live only in `.env.local` and in the Vercel project settings, never in the repo.
@@ -125,7 +131,7 @@ scripts/simulate.ts  the exhaustive validation
 - **Next.js** (App Router), **TypeScript** (strict), **Tailwind CSS**, deployed on **Vercel**.
 - **Vercel AI SDK** with **Google Gemini Flash on the free tier** (`@ai-sdk/google`) for reading
   the photo. A launch would use the paid tier, where inputs aren't used to improve Google's products.
-- **Stripe** Checkout in test mode, with inline prices. No webhooks.
+- **Stripe** Checkout in test mode, with inline prices and no webhooks (on when a key is set).
 - **zod** for validating the reader's output and saved progress; **vitest** for tests.
 - No database, no accounts, no analytics.
 
