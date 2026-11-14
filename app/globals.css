@@ -38,6 +38,19 @@ body {
   outline-offset: 2px;
 }
 
+/* Fade-in for the area model's rectangles; each one sets its own animation-delay. */
+@keyframes appear {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .appear {
+    animation: appear 0.35s ease-out backwards;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
