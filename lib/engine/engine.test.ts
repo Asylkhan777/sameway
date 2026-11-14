@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   BUGS,
+  addTrace,
   bugById,
   checkSet,
   columnAdd,
@@ -11,6 +12,7 @@ import {
   findProbe,
   rng,
   solve,
+  subtractTrace,
   toMessage,
 } from "./index";
 import type { Op, Problem } from "./index";
@@ -181,6 +183,65 @@ describe("check problems", () => {
       expect(c.problem.a >= 10 && c.problem.a <= 99 && c.problem.b >= 10 && c.problem.b <= 99).toBe(true);
       expect(c.buggy).not.toBe(c.correct);
     }
+  });
+});
+
+describe("worked traces (what the place-value picture draws)", () => {
+  it("subtraction: every pair up to 999 ends on the right answer, one digit per column", () => {
+    for (let a = 0; a <= 999; a++) {
+      for (let b = 0; b <= a; b++) {
+        const trace = subtractTrace(a, b);
+        if (!trace) throw new Error(`no trace for ${a} − ${b}`);
+        let value = 0;
+        trace.columns.forEach((column, i) => {
+          const final = column.top[column.top.length - 1];
+          if (column.result !== final - column.bottom || column.result < 0 || column.result > 9) {
+            throw new Error(`bad column ${i} in ${a} − ${b}`);
+          }
+          value += column.result * 10 ** i;
+        });
+        if (value !== a - b) throw new Error(`${a} − ${b} traced to ${value}`);
+      }
+    }
+  });
+
+  it("subtraction: a plain trade crosses out one digit and adds 10 next door", () => {
+    expect(subtractTrace(52, 18)).toEqual({
+      columns: [
+        { top: [2, 12], bottom: 8, result: 4 },
+        { top: [5, 4], bottom: 1, result: 3 },
+      ],
+      trades: [1],
+    });
+  });
+
+  it("subtraction: across a zero, the hundred is opened first and the 0 becomes 9", () => {
+    const trace = subtractTrace(403, 158);
+    expect(trace?.columns.map((c) => c.top)).toEqual([[3, 13], [0, 10, 9], [4, 3]]);
+    expect(trace?.trades).toEqual([2, 1]);
+  });
+
+  it("subtraction: a digit can give a ten and then receive one", () => {
+    expect(subtractTrace(432, 158)?.columns.map((c) => c.top)).toEqual([[2, 12], [3, 2, 12], [4, 3]]);
+    expect(subtractTrace(45, 21)?.trades).toEqual([]);
+    expect(subtractTrace(18, 52)).toBeNull();
+  });
+
+  it("addition: every pair up to 999 ends on the right answer", () => {
+    for (let a = 0; a <= 999; a++) {
+      for (let b = 0; b <= 999; b++) {
+        const value = addTrace(a, b).reduce((sum, column, i) => sum + column.result * 10 ** i, 0);
+        if (value !== a + b) throw new Error(`${a} + ${b} traced to ${value}`);
+      }
+    }
+  });
+
+  it("addition: the carried 1 lands on the next column", () => {
+    expect(addTrace(47, 38)).toEqual([
+      { top: 7, bottom: 8, carry: 0, result: 5 },
+      { top: 4, bottom: 3, carry: 1, result: 8 },
+    ]);
+    expect(addTrace(85, 47).map((c) => c.carry)).toEqual([0, 1, 1]);
   });
 });
 

@@ -142,6 +142,70 @@ export function columnSubtract(
   return fromDigits(out);
 }
 
+/** One column of a subtraction worked the way it is taught, with the regrouping written out. */
+export interface SubtractColumn {
+  /**
+   * The top digit as it changes: [5] if untouched, [5, 4] after giving a ten away,
+   * [2, 12] after receiving one, [0, 10, 9] when a zero is opened and passes one on.
+   */
+  top: number[];
+  bottom: number;
+  result: number;
+}
+
+export interface SubtractTrace {
+  /** Ones first. */
+  columns: SubtractColumn[];
+  /** Every trade in the order it is made: 2 means "1 hundred became 10 tens". */
+  trades: number[];
+}
+
+/** The correct column subtraction, step by step, for drawing the regrouping marks. */
+export function subtractTrace(a: number, b: number): SubtractTrace | null {
+  if (b > a) return null;
+  const top = toDigits(a).map((d) => [d]);
+  const bottom = toDigits(b);
+  const now = (i: number) => top[i][top[i].length - 1];
+  const trades: number[] = [];
+  const columns: SubtractColumn[] = [];
+  for (let i = 0; i < top.length; i++) {
+    const s = bottom[i] ?? 0;
+    if (now(i) < s) {
+      let j = i + 1;
+      while (now(j) === 0) j++; // b ≤ a, so there is always a place to take from
+      for (let k = j; k > i; k--) {
+        top[k].push(now(k) - 1);
+        top[k - 1].push(now(k - 1) + 10);
+        trades.push(k);
+      }
+    }
+    columns.push({ top: top[i], bottom: s, result: now(i) - s });
+  }
+  return { columns, trades };
+}
+
+/** One column of a correct addition: both digits, the 1 carried in, and the digit written. */
+export interface AddColumn {
+  top: number;
+  bottom: number;
+  carry: number;
+  result: number;
+}
+
+/** The correct column addition, ones first, with one column per digit of the sum. */
+export function addTrace(a: number, b: number): AddColumn[] {
+  const columns: AddColumn[] = [];
+  let carry = 0;
+  for (let i = 0; i < digitCount(a + b); i++) {
+    const top = digitAt(a, i);
+    const bottom = digitAt(b, i);
+    const sum = top + bottom + carry;
+    columns.push({ top, bottom, carry, result: sum % 10 });
+    carry = Math.floor(sum / 10);
+  }
+  return columns;
+}
+
 export type CarryRule = "correct" | "no-carry" | "whole-sum";
 
 /** Column addition. The last column is always written whole (a child writes 12, not 2). */
