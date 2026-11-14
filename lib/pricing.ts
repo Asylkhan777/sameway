@@ -5,7 +5,7 @@ import type { Progress } from "@/lib/storage";
 export const PLAN_NAME = "SameWay Plus";
 
 /** Own (non-sample) worksheets that get the full flow before Plus is needed. */
-export const FREE_OWN_WORKSHEETS = 1;
+export const FREE_OWN_WORKSHEETS = 3;
 
 export type PlanId = "monthly" | "yearly";
 
