@@ -6,7 +6,7 @@ Live: **https://sameway-sigma.vercel.app** (no sign-up, works in any browser)
 
 ![SameWay diagnosis](docs/screenshots/03-result-desktop.png)
 
-A parent snaps a photo of a grade 2–4 math worksheet. SameWay finds the one broken rule behind
+A parent snaps a photo of a grade 2-4 math worksheet. SameWay finds the one broken rule behind
 the wrong answers, shows it on the model the school uses (area model, place-value columns), gives
 the parent the words to say, and checks the fix with three practice problems.
 
@@ -28,7 +28,7 @@ Built solo for Business Cup 2.0 (AIESEC × Nazarbayev University × Zimran), a 2
 
 ## Who it is for
 
-A US parent of a 2nd–4th grader who helps with homework on weeknights. They know the right answer
+A US parent of a 2nd-4th grader who helps with homework on weeknights. They know the right answer
 but not *why* their kid's answer is wrong, and the school's methods aren't how they learned.
 The parent pays: the first three own worksheets are free, then SameWay Plus is $9.99/month or
 $59/school year (constants in [lib/pricing.ts](lib/pricing.ts)).
@@ -64,7 +64,7 @@ row". There are 14 rules, after Brown & Burton (1978) and VanLehn (1990). A wron
 equals a rule's output is a diagnosis, not a guess.
 
 - A wrong answer that fits no rule is checked for a single slipped fact (7 × 8 = 54) or one
-  column off by 1–2. If that fails too, the app says it doesn't know.
+  column off by 1-2. If that fails too, the app says it doesn't know.
 - The whole worksheet is scored at once: how many wrong answers a rule explains, and where it
   should have shown up but didn't. The verdict is `pattern`, `tie`, `maybe`, `no-pattern` or
   `all-correct`.
@@ -77,7 +77,7 @@ shown as "Not covered yet".
 
 ### Validation
 
-`npm run simulate` checks every grade 2–4 problem exhaustively (1.24M problems, about 10 s):
+`npm run simulate` checks every grade 2-4 problem exhaustively (1.24M problems, about 10 s):
 
 | Question | Result |
 |---|---|
