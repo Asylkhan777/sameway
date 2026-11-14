@@ -14,13 +14,24 @@ const OP_NAME: Record<Op, string> = { "+": "plus", "-": "minus", "*": "times" };
 const OUT_OF_SCOPE = toMessage({ op: "+", a: 0, b: 0 }, { kind: "unsupported" });
 
 const field =
-  "h-12 min-w-0 rounded-lg border border-line bg-card px-2 text-center tabular-nums placeholder:text-muted/50";
+  "h-12 min-w-0 rounded-lg border px-2 text-center tabular-nums placeholder:text-muted/50";
 const printed = `${field} text-lg`;
 /** The kid's answer is the one handwritten thing on the page. */
 const handwritten = `${field} font-hand text-3xl placeholder:font-sans placeholder:text-sm`;
 
-/** What a row that won't be checked says underneath, and how loudly. */
+const plainField = "border-line bg-card";
+/** Amber marks a row the photo reader wasn't sure about; the note under it says so in words. */
+const unsureField = "border-check bg-check-soft";
+const UNSURE = "Hard to read — please double-check.";
+
+/** What a row says underneath: a reading to double-check, or why it won't be checked. */
 function rowNote(row: DraftRow, state: RowState): { text: string; tone: string } | null {
+  const skipped = skipNote(row, state);
+  if (!row.unsure) return skipped;
+  return { text: skipped ? `${UNSURE} ${skipped.text}` : UNSURE, tone: "text-check" };
+}
+
+function skipNote(row: DraftRow, state: RowState): { text: string; tone: string } | null {
   switch (state.kind) {
     case "ready":
       return null;
@@ -44,8 +55,9 @@ interface Props {
 
 /** The editable confirm table: [a] [op] [b] = [kid's answer], one row per problem. */
 export function ProblemTable({ rows, onChange }: Props) {
+  // Editing a row means the parent has looked at it, so it stops being flagged.
   const update = (id: string, patch: Partial<DraftRow>) =>
-    onChange(rows.map((row) => (row.id === id ? { ...row, ...patch } : row)));
+    onChange(rows.map((row) => (row.id === id ? { ...row, ...patch, unsure: false } : row)));
   const lastOp = rows.at(-1)?.op ?? "-";
   const anyOutOfScope = rows.some((row) => readRow(row).kind === "unsupported");
 
@@ -55,6 +67,7 @@ export function ProblemTable({ rows, onChange }: Props) {
         {rows.map((row, index) => {
           const n = index + 1;
           const note = rowNote(row, readRow(row));
+          const tint = row.unsure ? unsureField : plainField;
           return (
             <li key={row.id}>
               <div className="flex items-center gap-1.5 sm:gap-2">
@@ -64,13 +77,13 @@ export function ProblemTable({ rows, onChange }: Props) {
                   inputMode="numeric"
                   value={row.a}
                   onChange={(event) => update(row.id, { a: digits(event.target.value, 5) })}
-                  className={`${printed} flex-1`}
+                  className={`${printed} ${tint} flex-1`}
                 />
                 <select
                   aria-label={`Problem ${n}: operation`}
                   value={row.op}
                   onChange={(event) => update(row.id, { op: event.target.value as Op })}
-                  className={`${printed} w-14 shrink-0 px-1`}
+                  className={`${printed} ${tint} w-14 shrink-0 px-1`}
                 >
                   {OPS.map((op) => (
                     <option key={op} value={op} aria-label={OP_NAME[op]}>
@@ -83,7 +96,7 @@ export function ProblemTable({ rows, onChange }: Props) {
                   inputMode="numeric"
                   value={row.b}
                   onChange={(event) => update(row.id, { b: digits(event.target.value, 5) })}
-                  className={`${printed} flex-1`}
+                  className={`${printed} ${tint} flex-1`}
                 />
                 <span aria-hidden className="text-lg text-muted">
                   =
@@ -94,7 +107,7 @@ export function ProblemTable({ rows, onChange }: Props) {
                   value={row.answer}
                   placeholder="blank"
                   onChange={(event) => update(row.id, { answer: digits(event.target.value, 9) })}
-                  className={`${handwritten} flex-[1.3]`}
+                  className={`${handwritten} ${tint} flex-[1.3]`}
                 />
                 <button
                   type="button"

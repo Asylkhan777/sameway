@@ -47,6 +47,14 @@ describe("draft rows", () => {
     expect(toDraftRow(entry)).toMatchObject({ a: "23", op: "*", b: "45", answer: "" });
   });
 
+  it("carry the photo reader's doubt, without changing what gets checked", () => {
+    const entry = { op: "-" as const, a: 63, b: 27, answer: 44 };
+    expect(toDraftRow(entry).unsure).toBeUndefined();
+    const unsure = toDraftRow(entry, true);
+    expect(unsure.unsure).toBe(true);
+    expect(readRow(unsure)).toEqual({ kind: "ready", item: { problem: { op: "-", a: 63, b: 27 }, answer: 44 } });
+  });
+
   it("get unique ids", () => {
     const ids = [emptyRow(), emptyRow(), emptyRow()].map((r) => r.id);
     expect(new Set(ids).size).toBe(3);

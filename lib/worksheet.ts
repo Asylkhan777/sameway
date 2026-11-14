@@ -12,6 +12,8 @@ export interface DraftRow {
   op: Op;
   b: string;
   answer: string;
+  /** The photo reader wasn't sure about a digit here; cleared once the parent edits the row. */
+  unsure?: boolean;
 }
 
 export type RowState =
@@ -29,12 +31,13 @@ const newId = (): string => `row-${++nextId}`;
 
 export const emptyRow = (op: Op = "-"): DraftRow => ({ id: newId(), a: "", op, b: "", answer: "" });
 
-export const toDraftRow = (entry: Entry): DraftRow => ({
+export const toDraftRow = (entry: Entry, unsure = false): DraftRow => ({
   id: newId(),
   a: String(entry.a),
   op: entry.op,
   b: String(entry.b),
   answer: entry.answer === null ? "" : String(entry.answer),
+  ...(unsure && { unsure }),
 });
 
 /** Whole number typed into a field, or null if the field is empty or not a number. */
