@@ -4,6 +4,8 @@
 
 Live: **https://sameway-sigma.vercel.app** (no sign-up, works in any browser)
 
+![SameWay diagnosis](docs/screenshots/03-result-desktop.png)
+
 A parent snaps a photo of a grade 2–4 math worksheet. SameWay finds the one broken rule behind
 the wrong answers, shows it on the model the school uses (area model, place-value columns), gives
 the parent the words to say, and checks the fix with three practice problems.
@@ -146,3 +148,10 @@ scripts/simulate.ts  the exhaustive validation
   never talks to an AI.
 - No accounts and no emails. Progress, the child's optional first name and the Plus status stay
   in this browser's localStorage.
+
+## Sources
+- DreamBox Learning parent survey (Nov 2024): https://www.dreambox.com/math/guides/new-math-vs-old-math
+- NAEP 2024 Mathematics, Grade 4: https://www.nationsreportcard.gov/reports/mathematics/2024/g4_8/national-trends/?grade=4
+- Brown & Burton (1978), "Diagnostic models for procedural bugs in basic mathematical skills", Cognitive Science 2(2)
+- VanLehn (1990), "Mind Bugs: The Origins of Procedural Misconceptions", MIT Press
+- Competitor features from public product pages (Photomath, Methodwise, Eedi), Nov 2026
