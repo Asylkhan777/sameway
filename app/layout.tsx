@@ -14,10 +14,17 @@ const caveat = Caveat({
   weight: ["600"],
 });
 
+const TITLE = "SameWay — see exactly why your kid got it wrong";
+const DESCRIPTION =
+  "Snap your kid's math homework. SameWay finds the one rule they're getting wrong, shows it the way their teacher does, and checks that it's fixed.";
+
 export const metadata: Metadata = {
-  title: "SameWay — see exactly why your kid got it wrong",
-  description:
-    "Snap your kid's math homework. SameWay finds the one rule they're getting wrong, shows it the way their teacher does, and checks that it's fixed.",
+  // Makes the link-preview image URL absolute.
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://sameway-sigma.vercel.app"),
+  title: TITLE,
+  description: DESCRIPTION,
+  openGraph: { title: TITLE, description: DESCRIPTION, siteName: "SameWay", type: "website" },
+  twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
