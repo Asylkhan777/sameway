@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens. Neutral paper base, one warm accent for "what's wrong",
+ * green for "fixed", amber for "please double-check".
+ */
+@theme inline {
+  --color-paper: #faf8f3;
+  --color-card: #ffffff;
+  --color-ink: #1d2330;
+  --color-muted: #666b76;
+  --color-line: #e6e1d5;
+  --color-accent: #c2410c;
+  --color-accent-soft: #fff1e7;
+  --color-fixed: #25784a;
+  --color-fixed-soft: #e7f5ec;
+  --color-check: #a16207;
+  --color-check-soft: #fdf5d8;
+  --font-sans: var(--font-geist-sans);
+  --font-hand: var(--font-caveat);
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+
+/* A faint graph-paper grid, like a math notebook. */
+.graph-paper {
+  background-image:
+    linear-gradient(to right, rgb(29 35 48 / 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(29 35 48 / 0.045) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
