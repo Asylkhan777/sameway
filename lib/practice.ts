@@ -5,15 +5,21 @@ import type { Exercise } from "@/lib/report";
 /** Problems in a practice round. Getting all of them right means the rule is fixed. */
 export const PRACTICE_SIZE = 3;
 
-/** The practice round for a rule: problems shaped like `like` on which the rule goes wrong. */
-export const practiceSet = (bug: Bug, like: Problem): Exercise[] => checkSet(bug, like, PRACTICE_SIZE);
+/** checkSet's default seed. Each later seed draws from a different pool of problems. */
+const FIRST_SEED = 7;
+
+/**
+ * The practice round for a rule: problems shaped like `like` on which the rule goes wrong.
+ * `round` counts earlier rounds on this rule, so practicing again brings new problems.
+ */
+export const practiceSet = (bug: Bug, like: Problem, round = 0): Exercise[] =>
+  checkSet(bug, like, PRACTICE_SIZE, FIRST_SEED + round);
 
 const same = (x: Problem, y: Problem): boolean => x.op === y.op && x.a === y.a && x.b === y.b;
 
 /** A new problem of the same kind that hasn't been shown yet, for retrying after a wrong answer. */
 export function freshExercise(bug: Bug, like: Problem, used: Problem[]): Exercise | null {
-  // checkSet's default seed is 7; later seeds draw from a different pool of problems.
-  for (let salt = 7; salt < 12; salt++) {
+  for (let salt = FIRST_SEED; salt < FIRST_SEED + 5; salt++) {
     const fresh = checkSet(bug, like, used.length + 1, salt).find(
       (exercise) => !used.some((problem) => same(problem, exercise.problem)),
     );

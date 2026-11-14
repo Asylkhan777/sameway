@@ -35,6 +35,22 @@ describe("practice set", () => {
     }
   });
 
+  it("practicing again brings a full set of different problems", () => {
+    for (const [id, like] of [
+      ["sub-smaller-from-larger", SAMPLE_A],
+      ["mul2-no-placeholder-zero", SAMPLE_B],
+    ] as const) {
+      const rule = bug(id);
+      const first = practiceSet(rule, like).map((exercise) => show(exercise.problem));
+      for (let round = 1; round <= 4; round++) {
+        const again = practiceSet(rule, like, round);
+        expect(again, `${id} round ${round}`).toHaveLength(PRACTICE_SIZE);
+        expect(again.map((exercise) => show(exercise.problem))).not.toEqual(first);
+        for (const exercise of again) expect(rule.run(exercise.problem)).toBe(exercise.buggy);
+      }
+    }
+  });
+
   it("a fresh problem is never one that was already shown", () => {
     const rule = bug("sub-smaller-from-larger");
     const used = practiceSet(rule, SAMPLE_A).map((exercise) => exercise.problem);
