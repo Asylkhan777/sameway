@@ -1,3 +1,5 @@
+import Link from "next/link";
+import type { ReactNode } from "react";
 import { ProblemList } from "@/components/ProblemList";
 import { Screen } from "@/components/Screen";
 import { button, textLink } from "@/components/styles";
@@ -14,6 +16,8 @@ interface Props {
   missed: Solved | null;
   /** "Not checked: 1 left blank", or null. */
   skippedNote: string | null;
+  /** The SAMPLE line, when this is a sample worksheet. */
+  sampleLabel?: ReactNode;
   /** How many practice problems there are for the rule; 0 hides the button. */
   practiceSize: number;
   headingProps: React.ComponentProps<"h1">;
@@ -28,6 +32,7 @@ export function Result(props: Props) {
   const { report, finding, missed, skippedNote, practiceSize, headingProps } = props;
   return (
     <Screen size="narrow">
+      {props.sampleLabel}
       <p className="text-sm font-semibold tracking-wide text-muted uppercase">Result</p>
       <h1 {...headingProps}>{summarize(report, finding)}</h1>
       {skippedNote && <p className="mt-2 text-sm text-muted">{skippedNote}</p>}
@@ -57,6 +62,12 @@ export function Result(props: Props) {
           Check another worksheet
         </button>
       </div>
+      <p className="mt-6 text-sm text-muted">
+        This worksheet is saved on this device.{" "}
+        <Link href="/progress" className={textLink}>
+          See progress
+        </Link>
+      </p>
     </Screen>
   );
 }

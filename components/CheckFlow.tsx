@@ -7,6 +7,8 @@ import { PhotoReading } from "@/components/PhotoReading";
 import { Practice } from "@/components/Practice";
 import { ProblemTable } from "@/components/ProblemTable";
 import { Result } from "@/components/Result";
+import { SampleBadge } from "@/components/SampleBadge";
+import { SamplePicker } from "@/components/SamplePicker";
 import { Screen } from "@/components/Screen";
 import { button, card, textLink } from "@/components/styles";
 import { TypedInput } from "@/components/TypedInput";
@@ -16,10 +18,16 @@ import { SYMBOL, diagnoseSheet } from "@/lib/engine";
 import { UnreadableImageError, toJpegDataUrl } from "@/lib/image";
 import type { Entry } from "@/lib/parse";
 import { practiceSet } from "@/lib/practice";
+import { recordPractice, recordWorksheet, verdictOf } from "@/lib/progress";
 import { readPhoto } from "@/lib/read-photo";
 import type { Reading } from "@/lib/reading";
 import type { Finding, Solved } from "@/lib/report";
 import { interpret } from "@/lib/report";
+import { sampleImage } from "@/lib/sample-image";
+import type { Sample } from "@/lib/samples";
+import { sampleById } from "@/lib/samples";
+import type { WorksheetRecord } from "@/lib/storage";
+import { updateProgress, useProgress } from "@/lib/storage";
 import type { DraftRow } from "@/lib/worksheet";
 import { readRow, readyItems, toDraftRow } from "@/lib/worksheet";
 
@@ -36,6 +44,14 @@ interface CheckState {
 }
 
 const NOT_CHECKED: CheckState = { attempt: 0, settled: null, missed: null };
+
+/**
+ * A sample waits this long for the photo reader, then uses its saved transcription, so a
+ * busy reader never holds up a first look at the product.
+ */
+const SAMPLE_READ_TIMEOUT_MS = 15_000;
+
+const newId = (): string => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
 /** How the worksheet tells the child to work, in the reader's words → ours. */
 const METHOD_NAME: Record<Reading["method"], string | null> = {
@@ -66,6 +82,16 @@ export function CheckFlow() {
   const [method, setMethod] = useState<Reading["method"]>("unknown");
   const [failure, setFailure] = useState<ReadFailure | null>(null);
   const request = useRef<AbortController | null>(null);
+  /** Where the rows came from. A sample stays a sample however it is edited. */
+  const [source, setSource] = useState<WorksheetRecord["source"]>("typed");
+  const [sample, setSample] = useState<Sample | null>(null);
+  /** The reader couldn't be reached for a sample, so its saved transcription is in the table. */
+  const [savedTranscription, setSavedTranscription] = useState(false);
+  /** This worksheet's record in the saved progress: one record however often it is re-checked. */
+  const sheet = useRef<{ id: string; at: string } | null>(null);
+  /** The practice round in progress: when it started, and how many came before it. */
+  const [round, setRound] = useState<{ at: string; before: number } | null>(null);
+  const progress = useProgress();
 
   // Move focus to the new step's heading so keyboard and screen-reader users follow along.
   // When the parent comes to the input step to type, the cursor goes in the text box instead.
@@ -107,11 +133,19 @@ export function CheckFlow() {
     return { bug, like: problem, size: practiceSet(bug, problem).length };
   }, [finding]);
 
+  /** Save what this worksheet showed. Called on every check, so the record follows the edits. */
+  const save = (items: SheetItem[], found: Finding) => {
+    sheet.current ??= { id: newId(), at: new Date().toISOString() };
+    const record = { ...sheet.current, source, items, verdict: verdictOf(found) };
+    updateProgress((saved) => recordWorksheet(saved, record));
+  };
+
   /** The kid's answer to the check problem: it names a rule, clears it, or leads to one more problem. */
   const answerCheck = (answer: number) => {
     const problem = checkProblem(asked);
     if (!problem) return;
     const settled = settle(report, asked, answer);
+    if (settled) save(checked, settled);
     setCheck(
       settled
         ? { ...check, settled, missed: null }
@@ -119,13 +153,27 @@ export function CheckFlow() {
     );
   };
 
+  /** Forget the worksheet in hand, so the next one starts a new record. */
+  const newSheet = useCallback((from: WorksheetRecord["source"], picked: Sample | null = null) => {
+    sheet.current = null;
+    setSource(from);
+    setSample(picked);
+    setSavedTranscription(false);
+    // A sample link (/check?sample=b) has done its job once the sample is left behind.
+    if (!picked && window.location.search) window.history.replaceState(null, "", window.location.pathname);
+  }, []);
+
   const restart = () => {
+    request.current?.abort();
+    newSheet("typed");
     setText("");
     setRows([]);
     setChecked([]);
     setCheck(NOT_CHECKED);
+    setRound(null);
     setPhoto(null);
     setMethod("unknown");
+    setFailure(null);
     setStep("input");
   };
 
@@ -141,6 +189,7 @@ export function CheckFlow() {
       if (typeof source === "string") {
         image = source;
       } else {
+        newSheet("photo");
         setPhoto(null);
         image = await toJpegDataUrl(source);
         if (controller.signal.aborted) return;
@@ -159,11 +208,63 @@ export function CheckFlow() {
       if (controller.signal.aborted) return;
       setFailure(error instanceof UnreadableImageError ? "unreadable-file" : "reader");
     }
-  }, []);
+  }, [newSheet]);
+
+  /**
+   * Run a sample worksheet through the same steps as a parent's photo: its image goes to the
+   * photo reader. Only if the reader can't be reached is the saved transcription used instead,
+   * and the confirm screen says so. The diagnosis is computed live either way.
+   */
+  const startSample = useCallback(
+    async (picked: Sample) => {
+      request.current?.abort();
+      const controller = new AbortController();
+      request.current = controller;
+      newSheet("sample", picked);
+      setFailure(null);
+      setPhoto(null);
+      setStep("reading");
+      let reading: Reading | null = null;
+      try {
+        const image = await sampleImage(picked);
+        if (controller.signal.aborted) return;
+        setPhoto(image);
+        reading = await readPhoto(image, controller.signal, SAMPLE_READ_TIMEOUT_MS);
+      } catch {
+        // Falls through to the saved transcription.
+      }
+      if (controller.signal.aborted) return;
+      if (reading && reading.problems.length > 0) {
+        setRows(reading.problems.map((problem) => toDraftRow(problem, problem.confidence === "low")));
+        setMethod(reading.method);
+      } else {
+        setRows(picked.entries.map((entry) => toDraftRow(entry)));
+        setMethod("unknown");
+        setSavedTranscription(true);
+      }
+      setStep("confirm");
+    },
+    [newSheet],
+  );
+
+  // A sample card on the landing page links here as /check?sample=b. The URL is only known
+  // in the browser, so the sample starts a tick after the first paint. It starts once: coming
+  // back to this page with the Back button shows the flow as it was left.
+  const linkFollowed = useRef(false);
+  useEffect(() => {
+    const picked = sampleById(new URLSearchParams(window.location.search).get("sample") ?? "");
+    if (!picked || linkFollowed.current) return;
+    const timer = setTimeout(() => {
+      linkFollowed.current = true;
+      void startSample(picked);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [startSample]);
 
   /** Leave the reading step for the input step, dropping the photo. */
   const backToInput = (toType: boolean) => {
     request.current?.abort();
+    newSheet("typed");
     setPhoto(null);
     setFailure(null);
     toTyping.current = toType;
@@ -175,6 +276,14 @@ export function CheckFlow() {
     tabIndex: -1,
     className: "text-3xl font-semibold tracking-tight text-balance outline-none sm:text-4xl",
   };
+
+  /** Shown above every step of a sample, so it is never mistaken for the visitor's own worksheet. */
+  const sampleLabel = sample && (
+    <p className="mb-3 flex items-center gap-2 text-sm text-muted">
+      <SampleBadge />
+      {sample.grade} · {sample.title}
+    </p>
+  );
 
   if (step === "input") {
     return (
@@ -188,6 +297,11 @@ export function CheckFlow() {
           <p className="mt-3 text-sm text-muted">
             We don&apos;t store your photos — they&apos;re only used to read the numbers.
           </p>
+        </div>
+        <h2 className="mt-12 text-2xl font-semibold tracking-tight">No homework at hand? Try a sample</h2>
+        <p className="mt-2 text-muted">Each sample is read and checked the same way your own photo would be.</p>
+        <div className="mt-4">
+          <SamplePicker onPick={startSample} />
         </div>
         <h2 id="type" className="mt-12 scroll-mt-6 text-2xl font-semibold tracking-tight">
           Or type it in
@@ -210,6 +324,7 @@ export function CheckFlow() {
   if (step === "reading") {
     return (
       <Screen size="narrow">
+        {sampleLabel && <div className="flex justify-center">{sampleLabel}</div>}
         <PhotoReading
           photo={photo}
           failure={failure}
@@ -229,12 +344,19 @@ export function CheckFlow() {
     const methodName = METHOD_NAME[method];
     return (
       <Screen size={photo ? "wide" : "narrow"}>
+        {sampleLabel}
         <h1 {...headingProps}>Is this what&apos;s on the page?</h1>
         <p className="mt-3 max-w-2xl text-lg text-muted">
-          {photo && "This is what we read from your photo. "}
+          {photo && !savedTranscription && `This is what we read from ${sample ? "the sample" : "your photo"}. `}
           Fix anything that doesn&apos;t match. The last box is your kid&apos;s answer — leave it blank to
           skip a problem.
         </p>
+        {savedTranscription && (
+          <p className="mt-4 max-w-2xl rounded-xl bg-check-soft px-4 py-3 text-check" role="status">
+            Couldn&apos;t reach the reader — using the saved transcription of this sample. The diagnosis is
+            still worked out live from the table below.
+          </p>
+        )}
         {unsure > 0 && (
           <p className="mt-4 max-w-2xl rounded-xl bg-check-soft px-4 py-3 text-check">
             {unsure === 1 ? "1 row was" : `${unsure} rows were`} hard to read and{" "}
@@ -248,7 +370,7 @@ export function CheckFlow() {
               {/* eslint-disable-next-line @next/next/no-img-element -- an in-memory data URL; nothing to optimize */}
               <img
                 src={photo}
-                alt="Your worksheet photo"
+                alt={sample ? "The sample worksheet" : "Your worksheet photo"}
                 className={`${card} max-h-72 w-full object-contain lg:max-h-[70vh]`}
               />
               {methodName && (
@@ -264,6 +386,7 @@ export function CheckFlow() {
                 className={button.primary}
                 disabled={ready.length === 0}
                 onClick={() => {
+                  save(ready, interpret(diagnoseSheet(ready)));
                   setChecked(ready);
                   setCheck(NOT_CHECKED);
                   setStep("result");
@@ -291,14 +414,20 @@ export function CheckFlow() {
     );
   }
 
-  if (step === "practice" && practice) {
+  if (step === "practice" && practice && round) {
+    const { family } = practice.bug;
     return (
       <Practice
+        key={round.at}
         bug={practice.bug}
         like={practice.like}
+        round={round.before}
         headingProps={headingProps}
+        onResults={(results) => updateProgress((saved) => recordPractice(saved, family, { at: round.at, results }))}
         onBack={() => setStep("result")}
+        backLabel="Back to the result"
         onRestart={restart}
+        progressLink
       />
     );
   }
@@ -312,7 +441,12 @@ export function CheckFlow() {
       practiceSize={practice?.size ?? 0}
       headingProps={headingProps}
       onCheck={answerCheck}
-      onPractice={() => setStep("practice")}
+      sampleLabel={sampleLabel}
+      onPractice={() => {
+        const before = practice ? (progress?.rules[practice.bug.family]?.practice.length ?? 0) : 0;
+        setRound({ at: new Date().toISOString(), before });
+        setStep("practice");
+      }}
       onEdit={() => setStep("confirm")}
       onRestart={restart}
     />

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { AnswerForm } from "@/components/AnswerForm";
 import { CheckIcon, CrossIcon } from "@/components/icons";
@@ -30,14 +31,23 @@ interface Props {
   bug: Bug;
   /** The worksheet problem it showed up on; practice problems have the same shape. */
   like: Problem;
-  headingProps: React.ComponentProps<"h1">;
+  /** Earlier rounds on this rule, so each round brings new problems. */
+  round?: number;
+  headingProps?: React.ComponentProps<"h1">;
+  /** After every answer: one entry per problem, true if it is right so far. */
+  onResults?: (results: boolean[]) => void;
   onBack: () => void;
-  onRestart: () => void;
+  backLabel: string;
+  /** Start another worksheet; left out where that isn't the next step. */
+  onRestart?: () => void;
+  /** Point to the progress page once the rule is fixed. */
+  progressLink?: boolean;
 }
 
 /** Three problems where the rule would go wrong. All three right means it is fixed. */
-export function Practice({ bug, like, headingProps, onBack, onRestart }: Props) {
-  const [slots, setSlots] = useState<Slot[]>(() => practiceSet(bug, like).map((exercise) => open(exercise)));
+export function Practice(props: Props) {
+  const { bug, like, round = 0, headingProps, onResults, onBack, backLabel, onRestart, progressLink } = props;
+  const [slots, setSlots] = useState<Slot[]>(() => practiceSet(bug, like, round).map((exercise) => open(exercise)));
   /** Every problem shown so far, so a retry is always a new one. */
   const [shown, setShown] = useState<Problem[]>(() => slots.map((slot) => slot.exercise.problem));
 
@@ -51,12 +61,13 @@ export function Practice({ bug, like, headingProps, onBack, onRestart }: Props) 
     fixedNote.current?.focus({ preventScroll: true });
   }, [fixed]);
 
-  const answer = (index: number, value: number) =>
-    setSlots(
-      slots.map((slot, i) =>
-        i === index ? { ...slot, answer: value, grade: grade(bug, slot.exercise.problem, value) } : slot,
-      ),
+  const answer = (index: number, value: number) => {
+    const next = slots.map((slot, i) =>
+      i === index ? { ...slot, answer: value, grade: grade(bug, slot.exercise.problem, value) } : slot,
     );
+    setSlots(next);
+    onResults?.(next.map((slot) => slot.grade?.kind === "right"));
+  };
 
   const retry = (index: number) => {
     // If the engine ever runs out of new problems, the same one can be tried again.
@@ -68,7 +79,9 @@ export function Practice({ bug, like, headingProps, onBack, onRestart }: Props) 
   return (
     <Screen size="narrow">
       <p className="text-sm font-semibold tracking-wide text-muted uppercase">Practice</p>
-      <h1 {...headingProps}>Practice the fix</h1>
+      <h1 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl" {...headingProps}>
+        Practice the fix
+      </h1>
       <p className="mt-3 text-lg text-muted">
         Hand the phone to your kid. These are problems like the ones on the worksheet, where the rule &ldquo;
         {bug.title.toLowerCase()}&rdquo; would go wrong. Paper and pencil are welcome.
@@ -110,16 +123,30 @@ export function Practice({ bug, like, headingProps, onBack, onRestart }: Props) 
           </h2>
           <p className="mt-2 leading-7">
             {slots.length} of {slots.length} right on problems where the old rule gives a different answer.
+            {progressLink && (
+              <>
+                {" "}
+                <Link href="/progress" className={textLink}>
+                  See it in progress
+                </Link>
+              </>
+            )}
           </p>
         </section>
       )}
 
       <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
-        <button type="button" className={fixed ? button.primary : button.secondary} onClick={onRestart}>
-          Check another worksheet
-        </button>
-        <button type="button" className={textLink} onClick={onBack}>
-          Back to the result
+        {onRestart && (
+          <button type="button" className={fixed ? button.primary : button.secondary} onClick={onRestart}>
+            Check another worksheet
+          </button>
+        )}
+        <button
+          type="button"
+          className={onRestart ? textLink : fixed ? button.primary : button.secondary}
+          onClick={onBack}
+        >
+          {backLabel}
         </button>
       </div>
     </Screen>
