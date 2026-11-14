@@ -4,22 +4,38 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PhotoInput } from "@/components/PhotoInput";
 import type { ReadFailure } from "@/components/PhotoReading";
 import { PhotoReading } from "@/components/PhotoReading";
-import { ProblemList } from "@/components/ProblemList";
+import { Practice } from "@/components/Practice";
 import { ProblemTable } from "@/components/ProblemTable";
+import { Result } from "@/components/Result";
+import { Screen } from "@/components/Screen";
 import { button, card, textLink } from "@/components/styles";
 import { TypedInput } from "@/components/TypedInput";
-import { VerdictCard } from "@/components/VerdictCard";
+import { checkProblem, settle } from "@/lib/check";
 import type { SheetItem } from "@/lib/engine";
 import { SYMBOL, diagnoseSheet } from "@/lib/engine";
 import { UnreadableImageError, toJpegDataUrl } from "@/lib/image";
 import type { Entry } from "@/lib/parse";
+import { practiceSet } from "@/lib/practice";
 import { readPhoto } from "@/lib/read-photo";
 import type { Reading } from "@/lib/reading";
-import { interpret, summarize } from "@/lib/report";
+import type { Finding, Solved } from "@/lib/report";
+import { interpret } from "@/lib/report";
 import type { DraftRow } from "@/lib/worksheet";
 import { readRow, readyItems, toDraftRow } from "@/lib/worksheet";
 
-type Step = "input" | "reading" | "confirm" | "result";
+type Step = "input" | "reading" | "confirm" | "result" | "practice";
+
+/** Where the one-problem check of a tie or a possible rule stands. */
+interface CheckState {
+  /** Which check problem is showing; each answer that settles nothing moves to the next. */
+  attempt: number;
+  /** What the check decided: the confirmed rule, or a one-off. */
+  settled: Finding | null;
+  /** The last answer, if it settled nothing. */
+  missed: Solved | null;
+}
+
+const NOT_CHECKED: CheckState = { attempt: 0, settled: null, missed: null };
 
 /** How the worksheet tells the child to work, in the reader's words → ours. */
 const METHOD_NAME: Record<Reading["method"], string | null> = {
@@ -38,12 +54,13 @@ const toText = (rows: DraftRow[]): string =>
     .map((row) => `${row.a} ${SYMBOL[row.op]} ${row.b} = ${row.answer}`.trimEnd())
     .join("\n");
 
-/** The check flow: photo or typing → reading → confirm what's on the page → see the diagnosis. */
+/** The check flow: photo or typing → reading → confirm what's on the page → diagnosis → practice. */
 export function CheckFlow() {
   const [step, setStep] = useState<Step>("input");
   const [text, setText] = useState("");
   const [rows, setRows] = useState<DraftRow[]>([]);
   const [checked, setChecked] = useState<SheetItem[]>([]);
+  const [check, setCheck] = useState<CheckState>(NOT_CHECKED);
   /** The resized photo as a data URL. It lives in memory only and is gone on reload. */
   const [photo, setPhoto] = useState<string | null>(null);
   const [method, setMethod] = useState<Reading["method"]>("unknown");
@@ -78,6 +95,39 @@ export function CheckFlow() {
   }, [step, failure]);
 
   useEffect(() => () => request.current?.abort(), []);
+
+  // The diagnosis is computed here, in the browser, from exactly the rows that were confirmed.
+  const report = useMemo(() => diagnoseSheet(checked), [checked]);
+  const asked = useMemo(() => interpret(report, check.attempt), [report, check.attempt]);
+  const finding = check.settled ?? asked;
+  /** The rule to practice, once one is named, and how many practice problems it has. */
+  const practice = useMemo(() => {
+    if (finding.kind !== "pattern") return null;
+    const { bug, problem } = finding.example;
+    return { bug, like: problem, size: practiceSet(bug, problem).length };
+  }, [finding]);
+
+  /** The kid's answer to the check problem: it names a rule, clears it, or leads to one more problem. */
+  const answerCheck = (answer: number) => {
+    const problem = checkProblem(asked);
+    if (!problem) return;
+    const settled = settle(report, asked, answer);
+    setCheck(
+      settled
+        ? { ...check, settled, missed: null }
+        : { attempt: check.attempt + 1, settled: null, missed: { problem, answer } },
+    );
+  };
+
+  const restart = () => {
+    setText("");
+    setRows([]);
+    setChecked([]);
+    setCheck(NOT_CHECKED);
+    setPhoto(null);
+    setMethod("unknown");
+    setStep("input");
+  };
 
   /** Read a photo: a file that was just picked, or the prepared data URL when trying again. */
   const read = useCallback(async (source: Blob | string) => {
@@ -215,6 +265,7 @@ export function CheckFlow() {
                 disabled={ready.length === 0}
                 onClick={() => {
                   setChecked(ready);
+                  setCheck(NOT_CHECKED);
                   setStep("result");
                 }}
               >
@@ -240,20 +291,30 @@ export function CheckFlow() {
     );
   }
 
+  if (step === "practice" && practice) {
+    return (
+      <Practice
+        bug={practice.bug}
+        like={practice.like}
+        headingProps={headingProps}
+        onBack={() => setStep("result")}
+        onRestart={restart}
+      />
+    );
+  }
+
   return (
     <Result
-      checked={checked}
-      headingProps={headingProps}
-      onEdit={() => setStep("confirm")}
-      onRestart={() => {
-        setText("");
-        setRows([]);
-        setChecked([]);
-        setPhoto(null);
-        setMethod("unknown");
-        setStep("input");
-      }}
+      report={report}
+      finding={finding}
+      missed={check.missed}
       skippedNote={skippedNote(rows)}
+      practiceSize={practice?.size ?? 0}
+      headingProps={headingProps}
+      onCheck={answerCheck}
+      onPractice={() => setStep("practice")}
+      onEdit={() => setStep("confirm")}
+      onRestart={restart}
     />
   );
 }
@@ -268,55 +329,4 @@ function skippedNote(rows: DraftRow[]): string | null {
     count("incomplete") > 0 && `${count("incomplete")} incomplete`,
   ].filter(Boolean);
   return parts.length > 0 ? `Not checked: ${parts.join(" · ")}` : null;
-}
-
-interface ResultProps {
-  checked: SheetItem[];
-  skippedNote: string | null;
-  headingProps: React.ComponentProps<"h1">;
-  onEdit: () => void;
-  onRestart: () => void;
-}
-
-function Result({ checked, skippedNote, headingProps, onEdit, onRestart }: ResultProps) {
-  // The diagnosis is computed here, in the browser, from exactly the rows that were confirmed.
-  const report = useMemo(() => diagnoseSheet(checked), [checked]);
-  const finding = useMemo(() => interpret(report), [report]);
-
-  return (
-    <Screen size="narrow">
-      <p className="text-sm font-semibold tracking-wide text-muted uppercase">Result</p>
-      <h1 {...headingProps}>{summarize(report, finding)}</h1>
-      {skippedNote && <p className="mt-2 text-sm text-muted">{skippedNote}</p>}
-
-      <div className="mt-8">
-        <VerdictCard finding={finding} wrong={report.wrong} />
-      </div>
-
-      <h2 className="mt-10 text-lg font-semibold">Problem by problem</h2>
-      {report.wrong > 0 && <p className="mt-1 text-sm text-muted">Open a wrong answer to see what happened.</p>}
-      <div className="mt-3">
-        <ProblemList report={report} />
-      </div>
-
-      <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
-        <button type="button" className={button.secondary} onClick={onEdit}>
-          Edit answers
-        </button>
-        <button type="button" className={textLink} onClick={onRestart}>
-          Check another worksheet
-        </button>
-      </div>
-    </Screen>
-  );
-}
-
-const SCREEN_WIDTH = { narrow: "max-w-2xl", medium: "max-w-4xl", wide: "max-w-5xl" };
-
-function Screen({ size = "medium", children }: { size?: keyof typeof SCREEN_WIDTH; children: React.ReactNode }) {
-  return (
-    <main className={`mx-auto w-full flex-1 px-4 py-8 sm:px-6 sm:py-12 ${SCREEN_WIDTH[size]}`}>
-      {children}
-    </main>
-  );
 }
