@@ -75,8 +75,14 @@ export default function Home() {
         </section>
       </main>
       <footer className="border-t border-line">
-        <div className="mx-auto w-full max-w-5xl px-4 py-6 text-sm text-muted sm:px-6">
-          SameWay · Grades 2–4 · + − ×
+        <div className="mx-auto flex w-full max-w-5xl flex-wrap justify-between gap-x-6 gap-y-2 px-4 py-6 text-sm text-muted sm:px-6">
+          <span>SameWay · Grades 2–4 · + − ×</span>
+          <a
+            href="https://github.com/Asylkhan777/sameway"
+            className="font-medium underline decoration-ink/30 underline-offset-4 hover:text-ink"
+          >
+            Source on GitHub
+          </a>
         </div>
       </footer>
     </>
