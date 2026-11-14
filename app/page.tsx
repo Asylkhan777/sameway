@@ -22,12 +22,15 @@ export default function Home() {
                 Snap their math homework. SameWay finds the one rule they&apos;re getting wrong, shows it
                 the way their teacher does, and checks that it&apos;s fixed.
               </p>
-              <div className="mt-8 flex flex-wrap items-center gap-4">
+              <div className="mt-8 flex flex-wrap items-center gap-3">
                 <Link href="/check" className={button.primary}>
-                  Type in a worksheet
+                  Upload homework photo
                 </Link>
-                <p className="text-sm text-muted">No sign-up · Grades 2–4 · + − ×</p>
+                <Link href="/check#type" className={button.secondary}>
+                  Type it in
+                </Link>
               </div>
+              <p className="mt-4 text-sm text-muted">No sign-up · Grades 2–4 · + − ×</p>
             </div>
             <SamplePreview />
           </div>
@@ -35,10 +38,13 @@ export default function Home() {
 
         <section className="mx-auto w-full max-w-5xl px-4 py-12 sm:px-6 sm:py-16">
           <h2 className="text-2xl font-semibold tracking-tight">Why you can trust it</h2>
-          <p className="mt-3 max-w-2xl text-lg leading-8 text-muted">
-            Every mistake pattern is a tested rule in code, not a guess. Validated on 1.2M grade 2–4
-            problems. When an answer doesn&apos;t match a known rule, SameWay says so.
-          </p>
+          <ul className="mt-3 max-w-2xl space-y-3 text-lg leading-8 text-muted">
+            <li>
+              Every mistake pattern is a tested rule in code, not a guess. Validated on 1.2M grade 2–4
+              problems. When an answer doesn&apos;t match a known rule, SameWay says so.
+            </li>
+            <li>We don&apos;t store your photos — they&apos;re only used to read the numbers.</li>
+          </ul>
         </section>
       </main>
       <footer className="border-t border-line">
