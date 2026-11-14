@@ -12,8 +12,6 @@ export interface DraftRow {
   op: Op;
   b: string;
   answer: string;
-  /** The photo reader was unsure about this row. */
-  lowConfidence?: boolean;
 }
 
 export type RowState =
