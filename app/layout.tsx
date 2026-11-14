@@ -16,7 +16,7 @@ const caveat = Caveat({
 
 const TITLE = "SameWay — see exactly why your kid got it wrong";
 const DESCRIPTION =
-  "Snap your kid's math homework. SameWay finds the one rule they're getting wrong, shows it the way their teacher does, and checks that it's fixed.";
+  "Snap your kid's math homework. SameWay finds the one rule they're getting wrong, shows it the way schools teach it, and checks that it's fixed.";
 
 export const metadata: Metadata = {
   // Makes the link-preview image URL absolute.

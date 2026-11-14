@@ -1,6 +1,6 @@
 # SameWay
 
-**See exactly why your kid got their math wrong, and fix it the way their teacher does.**
+**See exactly why your kid got their math wrong, and fix it the way schools teach it.**
 
 Live: **https://sameway-sigma.vercel.app** (no sign-up, works in any browser)
 
