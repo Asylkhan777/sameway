@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Paywall } from "@/components/Paywall";
 import { PhotoInput } from "@/components/PhotoInput";
 import type { ReadFailure } from "@/components/PhotoReading";
 import { PhotoReading } from "@/components/PhotoReading";
@@ -18,6 +19,7 @@ import { SYMBOL, diagnoseSheet } from "@/lib/engine";
 import { UnreadableImageError, toJpegDataUrl } from "@/lib/image";
 import type { Entry } from "@/lib/parse";
 import { practiceSet } from "@/lib/practice";
+import { needsPlus } from "@/lib/pricing";
 import { recordPractice, recordWorksheet, verdictOf } from "@/lib/progress";
 import { readPhoto } from "@/lib/read-photo";
 import type { Reading } from "@/lib/reading";
@@ -27,11 +29,11 @@ import { sampleImage } from "@/lib/sample-image";
 import type { Sample } from "@/lib/samples";
 import { sampleById } from "@/lib/samples";
 import type { WorksheetRecord } from "@/lib/storage";
-import { updateProgress, useProgress } from "@/lib/storage";
+import { loadProgress, updateProgress, useProgress } from "@/lib/storage";
 import type { DraftRow } from "@/lib/worksheet";
 import { readRow, readyItems, toDraftRow } from "@/lib/worksheet";
 
-type Step = "input" | "reading" | "confirm" | "result" | "practice";
+type Step = "input" | "paywall" | "reading" | "confirm" | "result" | "practice";
 
 /** Where the one-problem check of a tie or a possible rule stands. */
 interface CheckState {
@@ -180,6 +182,11 @@ export function CheckFlow() {
   /** Read a photo: a file that was just picked, or the prepared data URL when trying again. */
   const read = useCallback(async (source: Blob | string) => {
     request.current?.abort();
+    // A new own photo after the free worksheet needs Plus. Asked before anything is uploaded.
+    if (typeof source !== "string" && needsPlus(loadProgress())) {
+      setStep("paywall");
+      return;
+    }
     const controller = new AbortController();
     request.current = controller;
     setFailure(null);
@@ -312,11 +319,26 @@ export function CheckFlow() {
             onTextChange={setText}
             boxRef={typedBox}
             onContinue={(entries: Entry[]) => {
+              // Typing a new own worksheet after the free one needs Plus. Editing the one in
+              // hand, or a sample, never does.
+              if (!sheet.current && source !== "sample" && needsPlus(loadProgress())) {
+                setStep("paywall");
+                return;
+              }
               setRows(entries.map((entry) => toDraftRow(entry)));
               setStep("confirm");
             }}
           />
         </div>
+      </Screen>
+    );
+  }
+
+  if (step === "paywall") {
+    const toInput = () => setStep("input");
+    return (
+      <Screen size="narrow">
+        <Paywall headingProps={headingProps} onUnlocked={toInput} onBack={toInput} />
       </Screen>
     );
   }
