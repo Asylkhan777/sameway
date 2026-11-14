@@ -15,10 +15,12 @@ interface Props {
   text: string;
   onTextChange: (text: string) => void;
   onContinue: (entries: Entry[]) => void;
+  /** The text box, so the flow can put the cursor in it (e.g. after "Type it instead"). */
+  boxRef?: React.Ref<HTMLTextAreaElement>;
 }
 
 /** Type a worksheet, one problem per line, with a live preview of how it is read. */
-export function TypedInput({ text, onTextChange, onContinue }: Props) {
+export function TypedInput({ text, onTextChange, onContinue, boxRef }: Props) {
   const id = useId();
   const lines = parseWorksheet(text);
   const entries = lines.flatMap((line) => (line.ok ? [line.entry] : [])).slice(0, MAX_PROBLEMS);
@@ -37,6 +39,7 @@ export function TypedInput({ text, onTextChange, onContinue }: Props) {
           </button>
         </div>
         <textarea
+          ref={boxRef}
           id={id}
           value={text}
           onChange={(event) => onTextChange(event.target.value)}

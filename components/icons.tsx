@@ -33,3 +33,22 @@ export function ChevronIcon({ className = "size-5" }: IconProps) {
     </svg>
   );
 }
+
+export function CameraIcon({ className = "size-5" }: IconProps) {
+  return (
+    <svg {...base} strokeWidth={1.8} className={className}>
+      <path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h2l1.2-2h4.6l1.2 2h2A1.5 1.5 0 0 1 17 7.5v7a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 3 14.5z" />
+      <circle cx="10" cy="10.8" r="2.8" />
+    </svg>
+  );
+}
+
+export function PhotoIcon({ className = "size-5" }: IconProps) {
+  return (
+    <svg {...base} strokeWidth={1.8} className={className}>
+      <rect x="3" y="4" width="14" height="12" rx="2" />
+      <circle cx="7.4" cy="8" r="1.1" />
+      <path d="M3.5 14l4-4 3 3 2.2-2.2 3.8 3.7" />
+    </svg>
+  );
+}
