@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useId, useState } from "react";
+import { PlanNote } from "@/components/PlanNote";
 import { Practice } from "@/components/Practice";
 import { RuleCard, formatDay } from "@/components/RuleCard";
 import { SampleBadge } from "@/components/SampleBadge";
@@ -207,6 +208,8 @@ export function ProgressView() {
             </section>
           </>
         )}
+
+        {!inDemo && progress !== null && <PlanNote progress={progress} />}
 
         {!inDemo && progress !== null && (
           <div className="mt-10">

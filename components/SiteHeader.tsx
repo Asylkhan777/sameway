@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { button } from "@/components/styles";
 
 const navLink = "rounded-md px-2 py-1 font-medium text-muted transition-colors hover:text-ink";
 
@@ -15,6 +16,12 @@ export function SiteHeader() {
           </Link>
           <Link href="/progress" className={navLink}>
             Progress
+          </Link>
+          <Link href="/#pricing" className={`${navLink} hidden sm:inline`}>
+            Pricing
+          </Link>
+          <Link href="/upgrade" className={`${button.small} ml-1`}>
+            Get Plus
           </Link>
         </nav>
       </div>

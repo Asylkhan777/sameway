@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { CheckIcon, CrossIcon } from "@/components/icons";
 import { KidAnswer } from "@/components/KidAnswer";
+import { PricingSection } from "@/components/PricingSection";
 import { SampleBadge } from "@/components/SampleBadge";
 import { SamplePicker } from "@/components/SamplePicker";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -22,7 +23,7 @@ export default function Home() {
               </h1>
               <p className="mt-5 max-w-xl text-lg leading-8 text-muted">
                 Snap their math homework. SameWay finds the one rule they&apos;re getting wrong, shows it
-                the way their teacher does, and checks that it&apos;s fixed.
+                the way schools teach it, and checks that it&apos;s fixed.
               </p>
               <a href="#samples" className={`${button.primary} mt-8`}>
                 Try a sample worksheet
@@ -63,12 +64,17 @@ export default function Home() {
           </p>
         </section>
 
+        <PricingSection />
+
         <section className="mx-auto w-full max-w-5xl px-4 py-12 sm:px-6 sm:py-16">
           <h2 className="text-2xl font-semibold tracking-tight">Why you can trust it</h2>
           <ul className="mt-3 max-w-2xl space-y-3 text-lg leading-8 text-muted">
             <li>
-              Every mistake pattern is a tested rule in code, not a guess. Validated on 1.2M grade 2–4
+              Every mistake pattern is a tested rule in code, not a guess. Tested on 1.2M simulated
               problems. When an answer doesn&apos;t match a known rule, SameWay says so.
+              <span className="mt-1 block text-sm">
+                Simulated student work; real-world accuracy not yet measured.
+              </span>
             </li>
             <li>We don&apos;t store your photos — they&apos;re only used to read the numbers.</li>
           </ul>

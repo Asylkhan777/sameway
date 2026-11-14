@@ -6,6 +6,8 @@ const buttonBase =
 export const button = {
   primary: `${buttonBase} bg-ink text-white hover:bg-ink/85 disabled:cursor-not-allowed disabled:bg-ink/30`,
   secondary: `${buttonBase} border border-line bg-card text-ink hover:border-ink/40`,
+  small:
+    "inline-flex h-9 items-center justify-center rounded-full bg-ink px-4 text-sm font-medium whitespace-nowrap text-white transition-colors hover:bg-ink/85",
 };
 
 export const textLink =

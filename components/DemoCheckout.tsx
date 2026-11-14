@@ -14,6 +14,8 @@ interface Props {
   headingProps: ComponentPropsWithRef<"h1">;
   /** Plus is on and the parent is ready to go back to the worksheet. */
   onDone: () => void;
+  /** The button on the confirmation screen. */
+  backLabel: string;
   onBack: () => void;
 }
 
@@ -33,7 +35,7 @@ const field =
  * as a real one (plan, order summary, card, pay, confirmation), but no payment is made
  * and the card fields are never sent anywhere.
  */
-export function DemoCheckout({ planId, onPlanChange, headingProps, onDone, onBack }: Props) {
+export function DemoCheckout({ planId, onPlanChange, headingProps, onDone, backLabel, onBack }: Props) {
   const [cardDetails, setCardDetails] = useState(TEST_CARD);
   const [stage, setStage] = useState<"form" | "paying" | "paid">("form");
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -76,7 +78,7 @@ export function DemoCheckout({ planId, onPlanChange, headingProps, onDone, onBac
           in this browser.
         </p>
         <button type="button" className={`${button.primary} mt-8`} onClick={onDone}>
-          Back to your worksheet
+          {backLabel}
         </button>
       </>
     );

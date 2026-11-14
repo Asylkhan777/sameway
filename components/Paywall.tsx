@@ -13,6 +13,8 @@ interface Props {
   /** Plus was switched on without leaving the page (the built-in demo checkout). */
   onUnlocked: () => void;
   onBack: () => void;
+  /** The free worksheets ran out (the paywall), rather than Plus chosen from the pricing links. */
+  atLimit?: boolean;
 }
 
 /**
@@ -20,7 +22,7 @@ interface Props {
  * With a Stripe key on the server, the button opens Stripe Checkout in test mode.
  * Without one, it opens the built-in demo checkout, so the flow never dead-ends.
  */
-export function Paywall({ headingProps, onUnlocked, onBack }: Props) {
+export function Paywall({ headingProps, onUnlocked, onBack, atLimit = true }: Props) {
   const [planId, setPlanId] = useState<PlanId>("yearly");
   /** Is Stripe Checkout available? null until the server has answered. */
   const [configured, setConfigured] = useState<boolean | null>(null);
@@ -64,6 +66,7 @@ export function Paywall({ headingProps, onUnlocked, onBack }: Props) {
         onPlanChange={setPlanId}
         headingProps={headingProps}
         onDone={onUnlocked}
+        backLabel={atLimit ? "Back to your worksheet" : "Check a worksheet"}
         onBack={() => setInCheckout(false)}
       />
     );
@@ -71,9 +74,11 @@ export function Paywall({ headingProps, onUnlocked, onBack }: Props) {
 
   return (
     <>
-      <h1 {...headingProps}>Keep going with {PLAN_NAME}</h1>
+      <h1 {...headingProps}>{atLimit ? `Keep going with ${PLAN_NAME}` : `Get ${PLAN_NAME}`}</h1>
       <p className="mt-3 text-lg text-muted">
-        Your {FREE_OWN_WORKSHEETS} free worksheets are used. Plus covers every homework night after them.
+        {atLimit
+          ? `Your ${FREE_OWN_WORKSHEETS} free worksheets are used. Plus covers every homework night after them.`
+          : `Your first ${FREE_OWN_WORKSHEETS} worksheets are free. Plus covers every homework night after them.`}{" "}
         The sample worksheets and your progress page stay free.
       </p>
 
