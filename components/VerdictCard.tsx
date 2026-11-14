@@ -1,18 +1,28 @@
 import type { ReactNode } from "react";
+import { AnswerForm } from "@/components/AnswerForm";
 import { KidAnswer } from "@/components/KidAnswer";
-import { card } from "@/components/styles";
+import { RuleVisual } from "@/components/RuleVisual";
+import { SayBubble } from "@/components/SayBubble";
+import { button, card } from "@/components/styles";
 import type { Problem } from "@/lib/engine";
 import { show, solve } from "@/lib/engine";
-import type { Example, Finding } from "@/lib/report";
+import type { Example, Finding, Solved } from "@/lib/report";
 
 interface Props {
   finding: Finding;
   /** Wrong answers on the whole sheet. */
   wrong: number;
+  /** The kid's answer to the check problem of a tie or a possible rule. */
+  onCheck: (answer: number) => void;
+  /** The last check answer, if it settled nothing and a new check problem is shown. */
+  missed?: Solved | null;
+  /** Starts practice; left out when there is nothing to practice. */
+  onPractice?: () => void;
+  practiceSize?: number;
 }
 
-/** The headline diagnosis for a worksheet. Rule names and explanations come from the engine. */
-export function VerdictCard({ finding, wrong }: Props) {
+/** The headline diagnosis for a worksheet. Rule names, explanations and pictures come from the engine. */
+export function VerdictCard({ finding, wrong, onCheck, missed = null, onPractice, practiceSize = 0 }: Props) {
   switch (finding.kind) {
     case "all-correct":
       return (
@@ -31,18 +41,44 @@ export function VerdictCard({ finding, wrong }: Props) {
         </Shell>
       );
 
+    case "one-off": {
+      const { solved, rules } = finding;
+      return (
+        <Shell tone="fixed" eyebrow="Nothing to fix" title="Looks like a one-off.">
+          <p>
+            They solved <Expression problem={solved.problem} /> = {solved.answer} correctly — a problem where{" "}
+            {rules === 1 ? "that rule" : rules === 2 ? "either rule" : "any of those rules"} would have gone
+            wrong. It isn&apos;t a habit, so there is nothing to unlearn.
+          </p>
+          <p className="text-muted">The notes below show what happened on each worksheet answer.</p>
+        </Shell>
+      );
+    }
+
     case "pattern": {
-      const { evidence, example } = finding;
+      const { evidence, example, confirmedBy } = finding;
       return (
         <Shell tone="accent" eyebrow="The one rule behind it" title={example.bug.title}>
           <p className="font-medium">
-            Explains {evidence.explained} of {wrong} wrong answers
+            Explains {evidence.explained} of {wrong} wrong {wrong === 1 ? "answer" : "answers"}
+            {confirmedBy && (
+              <>
+                {" · "}settled by the check problem: <Expression problem={confirmedBy.problem} /> ={" "}
+                <KidAnswer value={confirmedBy.answer} />
+              </>
+            )}
           </p>
           <ExampleBlock example={example} />
+          <RuleVisual bug={example.bug} problem={example.problem} animate />
           <SayBubble>{example.bug.say(example.problem)}</SayBubble>
           <p className="text-sm text-muted">
             This isn&apos;t carelessness. They&apos;re following a rule that works some of the time.
           </p>
+          {onPractice && (
+            <button type="button" className={`${button.primary} w-full sm:w-auto`} onClick={onPractice}>
+              Practice the fix ({practiceSize} {practiceSize === 1 ? "problem" : "problems"})
+            </button>
+          )}
         </Shell>
       );
     }
@@ -53,15 +89,18 @@ export function VerdictCard({ finding, wrong }: Props) {
         <Shell tone="check" eyebrow="Possible rule" title={`Possible: ${example.bug.title}`}>
           <p className="font-medium">
             {evidence.explained === 1
-              ? "Seen once on this sheet. One more problem will confirm it."
-              : `Seen ${evidence.explained} times, but not every time it could have shown up.`}
+              ? "Seen once on this sheet. Let's confirm with one problem."
+              : `Seen ${evidence.explained} times, but not every time it could have shown up. One problem will confirm it.`}
           </p>
           <ExampleBlock example={example} />
           {check && (
-            <Aside title="Confirm it with one problem">
-              Ask your kid to solve <Expression problem={check.problem} />. If they write{" "}
-              <KidAnswer value={check.buggy} />, it&apos;s this rule. If they write {check.correct}, it was a
-              one-off and there is nothing to fix.
+            <Aside title={missed ? "Try one more problem" : "Ask your kid to solve one problem"}>
+              {missed && <Missed solved={missed} rules={1} />}
+              <AnswerForm key={show(check.problem)} problem={check.problem} onAnswer={onCheck} />
+              <p className="mt-3">
+                If they write <KidAnswer value={check.buggy} />, it&apos;s this rule. If they write {check.correct},
+                it was a one-off and there is nothing to fix.
+              </p>
             </Aside>
           )}
         </Shell>
@@ -77,11 +116,11 @@ export function VerdictCard({ finding, wrong }: Props) {
           title={`${candidates.length === 2 ? "Two" : "A few"} rules fit ${wrong === 1 ? "this answer" : "these answers"} equally — one quick check decides.`}
         >
           {probe ? (
-            <Aside title="Ask your kid to solve one problem">
-              <p>
-                <Expression problem={probe.problem} /> — then look at what they write:
-              </p>
-              <ul className="mt-3 space-y-2">
+            <Aside title={missed ? "Try one more problem" : "Ask your kid to solve one problem"}>
+              {missed && <Missed solved={missed} rules={candidates.length} />}
+              <AnswerForm key={show(probe.problem)} problem={probe.problem} onAnswer={onCheck} />
+              <p className="mt-4 text-sm font-semibold">What their answer will tell us</p>
+              <ul className="mt-2 space-y-2">
                 {probe.expected.map((expected) => (
                   <li key={expected.family} className="flex items-baseline gap-3">
                     <span className="w-16 shrink-0 text-right">
@@ -98,11 +137,14 @@ export function VerdictCard({ finding, wrong }: Props) {
               </ul>
             </Aside>
           ) : (
-            <ul className="list-disc space-y-1 pl-5">
-              {candidates.map((candidate) => (
-                <li key={candidate.family}>{candidate.bug.title}</li>
-              ))}
-            </ul>
+            <>
+              <p>No single problem tells these apart, so here are both:</p>
+              <ul className="list-disc space-y-1 pl-5">
+                {candidates.map((candidate) => (
+                  <li key={candidate.family}>{candidate.bug.title}</li>
+                ))}
+              </ul>
+            </>
           )}
         </Shell>
       );
@@ -145,22 +187,22 @@ function ExampleBlock({ example }: { example: Example }) {
   );
 }
 
-function SayBubble({ children }: { children: ReactNode }) {
+/** Says plainly that the last check answer didn't decide anything. */
+function Missed({ solved, rules }: { solved: Solved; rules: number }) {
   return (
-    <figure>
-      <figcaption className="text-sm font-semibold text-muted">What to say</figcaption>
-      <blockquote className="mt-1 rounded-2xl rounded-tl-sm border border-line bg-paper px-4 py-3 text-lg leading-7">
-        {children}
-      </blockquote>
-    </figure>
+    <p className="mb-4" role="status">
+      They wrote <KidAnswer value={solved.answer} /> for <Expression problem={solved.problem} />. That isn&apos;t
+      right, but it also isn&apos;t what {rules === 1 ? "this rule" : rules === 2 ? "either rule" : "any of these rules"}{" "}
+      gives, so it didn&apos;t settle anything. Here is another one.
+    </p>
   );
 }
 
 function Aside({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="rounded-xl bg-check-soft px-4 py-3">
+    <div className="rounded-xl bg-check-soft px-4 py-4">
       <p className="text-sm font-semibold text-check">{title}</p>
-      <div className="mt-1">{children}</div>
+      <div className="mt-2">{children}</div>
     </div>
   );
 }

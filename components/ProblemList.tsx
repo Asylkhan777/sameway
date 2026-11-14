@@ -1,5 +1,6 @@
 import { CheckIcon, ChevronIcon, CrossIcon } from "@/components/icons";
 import { KidAnswer } from "@/components/KidAnswer";
+import { RuleVisual } from "@/components/RuleVisual";
 import { card } from "@/components/styles";
 import type { SheetReport } from "@/lib/engine";
 import { show, toMessage } from "@/lib/engine";
@@ -51,7 +52,10 @@ function Line({ entry }: { entry: ReportItem }) {
 }
 
 function WrongProblem({ entry }: { entry: ReportItem }) {
-  const message = toMessage(entry.item.problem, entry.diagnosis);
+  const { item, diagnosis } = entry;
+  const message = toMessage(item.problem, diagnosis);
+  // Draw the rule only when the answer points at exactly one; two candidates would need two pictures.
+  const rule = diagnosis.kind === "bug" && diagnosis.families.length === 1 ? diagnosis.matches[0] : null;
   return (
     <details className="group">
       <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-4 py-2 hover:bg-paper sm:px-5 [&::-webkit-details-marker]:hidden">
@@ -61,6 +65,7 @@ function WrongProblem({ entry }: { entry: ReportItem }) {
       <div className="space-y-2 px-4 pt-1 pb-4 leading-7 sm:pr-5 sm:pl-15">
         <p className="font-semibold">{message.headline}</p>
         <p>{message.body}</p>
+        {rule && <RuleVisual bug={rule} problem={item.problem} />}
         {message.say && (
           <p className="text-muted">
             <span className="font-medium text-ink">Say:</span> {message.say}
