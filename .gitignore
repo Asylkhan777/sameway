@@ -40,3 +40,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local agent instructions (kept on disk, not in the repo)
+CLAUDE.md
+AGENTS.md
