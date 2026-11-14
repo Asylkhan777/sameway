@@ -4,7 +4,7 @@
 
 Live: **https://sameway-sigma.vercel.app** (no sign-up, works in any browser)
 
-![SameWay diagnosis](docs/screenshots/03-result-desktop.png)
+![SameWay diagnosis](docs/screenshots/03-result-area-model-desktop.png)
 
 A parent snaps a photo of a grade 2-4 math worksheet. SameWay finds the one broken rule behind
 the wrong answers, shows it on the model the school uses (area model, place-value columns), gives
