@@ -31,18 +31,21 @@ const ADDITION_SHEET: Entry[] = [
   { op: "+", a: 29, b: 46, answer: 75 },
 ];
 
-/** Days are counted back from today. */
+/**
+ * Days are counted back from today. Maya's worksheets are the three sample sheets plus one
+ * clean addition sheet; the page that shows them carries a DEMO banner.
+ */
 const SCRIPT: Step[] = [
-  { day: -20, sheet: sample("a"), source: "sample" },
+  { day: -20, sheet: sample("a"), source: "photo" },
   // 31 − 23, 71 − 58, 62 − 54: the old rule twice, right once.
   { day: -20, practice: "sub-smaller-from-larger", answers: [12, 13, 12] },
   // 72 − 54, 91 − 52, 83 − 68: all right.
   { day: -18, practice: "sub-smaller-from-larger", answers: [18, 39, 15] },
   { day: -13, sheet: ADDITION_SHEET, source: "typed" },
-  { day: -6, sheet: sample("c"), source: "sample" },
+  { day: -6, sheet: sample("c"), source: "photo" },
   // 705 − 618, 900 − 524, 601 − 583: the old rule on the middle one.
   { day: -6, practice: "sub-across-zero", answers: [87, 386, 18] },
-  { day: -1, sheet: sample("b"), source: "sample" },
+  { day: -1, sheet: sample("b"), source: "photo" },
 ];
 
 const DAY_MS = 24 * 60 * 60 * 1000;
