@@ -94,6 +94,8 @@ export function CheckFlow() {
   /** The practice round in progress: when it started, and how many came before it. */
   const [round, setRound] = useState<{ at: string; before: number } | null>(null);
   const progress = useProgress();
+  /** The worksheet that met the paywall: a photo or typed problems, picked up again once Plus is on. */
+  const held = useRef<Blob | Entry[] | null>(null);
 
   // Move focus to the new step's heading so keyboard and screen-reader users follow along.
   // When the parent comes to the input step to type, the cursor goes in the text box instead.
@@ -182,8 +184,9 @@ export function CheckFlow() {
   /** Read a photo: a file that was just picked, or the prepared data URL when trying again. */
   const read = useCallback(async (source: Blob | string) => {
     request.current?.abort();
-    // A new own photo after the free worksheet needs Plus. Asked before anything is uploaded.
+    // A new own photo after the free worksheets needs Plus. Asked before anything is uploaded.
     if (typeof source !== "string" && needsPlus(loadProgress())) {
+      held.current = source;
       setStep("paywall");
       return;
     }
@@ -319,9 +322,10 @@ export function CheckFlow() {
             onTextChange={setText}
             boxRef={typedBox}
             onContinue={(entries: Entry[]) => {
-              // Typing a new own worksheet after the free one needs Plus. Editing the one in
+              // Typing a new own worksheet after the free ones needs Plus. Editing the one in
               // hand, or a sample, never does.
               if (!sheet.current && source !== "sample" && needsPlus(loadProgress())) {
+                held.current = entries;
                 setStep("paywall");
                 return;
               }
@@ -335,10 +339,22 @@ export function CheckFlow() {
   }
 
   if (step === "paywall") {
-    const toInput = () => setStep("input");
+    /** Plus is on: carry on with the worksheet that was being started. */
+    const resume = () => {
+      const waiting = held.current;
+      held.current = null;
+      if (waiting instanceof Blob) {
+        void read(waiting);
+      } else if (waiting) {
+        setRows(waiting.map((entry) => toDraftRow(entry)));
+        setStep("confirm");
+      } else {
+        setStep("input");
+      }
+    };
     return (
       <Screen size="narrow">
-        <Paywall headingProps={headingProps} onUnlocked={toInput} onBack={toInput} />
+        <Paywall headingProps={headingProps} onUnlocked={resume} onBack={() => setStep("input")} />
       </Screen>
     );
   }
